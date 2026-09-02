@@ -1,0 +1,6 @@
+-keep class okhttp3.** { *; }
+-keep class com.aether.worker.** { *; }
+-dontwarn okhttp3.**
+-dontwarn com.squareup.okhttp3.**
+-keepattributes Signature
+-keepattributes *Annotation*

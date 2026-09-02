@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Aether Worker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      padding: 16px;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.25rem; margin-bottom: 16px; color: #7c6aef; }
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2a2d3a;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .card-title { font-size: 0.7rem; text-transform: uppercase; color: #888; margin-bottom: 8px; }
+    .value { font-size: 1.5rem; font-weight: 600; }
+    .label { font-size: 0.8rem; color: #888; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .status-dot {
+      display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+      margin-right: 6px; vertical-align: middle;
+    }
+    .status-dot.connected { background: #4caf50; }
+    .status-dot.disconnected { background: #f44336; }
+    input, select {
+      width: 100%; padding: 10px; background: #0f1117; color: #e0e0e0;
+      border: 1px solid #2a2d3a; border-radius: 8px; font-size: 1rem;
+      margin-bottom: 8px;
+    }
+    button {
+      width: 100%; padding: 12px; background: #7c6aef; color: #fff;
+      border: none; border-radius: 8px; font-size: 1rem; font-weight: 600;
+      cursor: pointer;
+    }
+    button:active { background: #6a58d6; }
+    button.stop { background: #f44336; }
+    .bar-bg {
+      height: 6px; background: #2a2d3a; border-radius: 3px; margin-top: 6px;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 3px; transition: width 0.5s;
+    }
+    .green { background: #4caf50; }
+    .amber { background: #ff9800; }
+    .red { background: #f44336; }
+    .text-green { color: #4caf50; }
+    .text-amber { color: #ff9800; }
+    .text-red { color: #f44336; }
+    .text-muted { color: #888; font-size: 0.8rem; }
+    .mt-2 { margin-top: 8px; }
+    .mt-4 { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>⚡ Aether Worker</h1>
+
+  <!-- Configuration -->
+  <div class="card">
+    <div class="card-title">Controller Connection</div>
+    <input id="controller-url" type="text"
+      placeholder="http://192.168.1.100:8080"
+      value="http://localhost:8080" />
+    <input id="device-id" type="text" placeholder="Device ID" value="phone-1" />
+    <input id="display-name" type="text" placeholder="Display Name" value="My Phone" />
+    <button id="btn-start">Start Reporting</button>
+    <button id="btn-stop" class="stop" style="display:none; margin-top:8px;">Stop</button>
+    <div class="mt-2 text-muted" id="status">
+      <span class="status-dot disconnected"></span> Disconnected
+    </div>
+  </div>
+
+  <!-- Telemetry -->
+  <div class="card" id="telemetry-card" style="display:none;">
+    <div class="card-title">Live Telemetry</div>
+    <div class="grid grid-3">
+      <div>
+        <div class="label">CPU</div>
+        <div class="value" id="cpu">—</div>
+        <div class="bar-bg"><div class="bar-fill green" id="cpu-bar" style="width:0%"></div></div>
+      </div>
+      <div>
+        <div class="label">Memory</div>
+        <div class="value" id="memory">—</div>
+        <div class="bar-bg"><div class="bar-fill green" id="mem-bar" style="width:0%"></div></div>
+      </div>
+      <div>
+        <div class="label">Battery</div>
+        <div class="value" id="battery">—</div>
+      </div>
+    </div>
+    <div class="grid mt-2">
+      <div>
+        <div class="label">Temperature</div>
+        <div class="value" id="temp">—</div>
+      </div>
+      <div>
+        <div class="label">Network</div>
+        <div class="value" id="network">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="log-card" style="display:none;">
+    <div class="card-title">Event Log</div>
+    <div id="log" class="text-muted" style="font-size:0.75rem; max-height:200px; overflow-y:auto;"></div>
+  </div>
+
+  <script>
+    let running = false;
+    let intervalId = null;
+
+    function $(id) { return document.getElementById(id); }
+
+    function setStatus(text, connected) {
+      $("status").innerHTML =
+        `<span class="status-dot ${connected ? 'connected' : 'disconnected'}"></span> ${text}`;
+    }
+
+    function log(msg) {
+      const el = $("log");
+      const ts = new Date().toLocaleTimeString();
+      el.innerHTML = `[${ts}] ${msg}<br>` + el.innerHTML;
+    }
+
+    function barColor(pct) {
+      if (pct > 85) return "red";
+      if (pct > 60) return "amber";
+      return "green";
+    }
+
+    async function getBattery() {
+      try {
+        if ("getBattery" in navigator) {
+          const b = await navigator.getBattery();
+          return { level: Math.round(b.level * 100), charging: b.charging };
+        }
+      } catch {}
+      return { level: null, charging: null };
+    }
+
+    async function getCPU() {
+      const samples = [];
+      for (let i = 0; i < 5; i++) {
+        const t0 = performance.now();
+        await new Promise(r => setTimeout(r, 10));
+        samples.push(performance.now() - t0);
+      }
+      const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
+      const busy = Math.min(100, Math.max(0, Math.round((avg - 10) / 2)));
+      return busy;
+    }
+
+    async function getMemory() {
+      try {
+        if (navigator.deviceMemory) {
+          return Math.round(navigator.deviceMemory * 0.6);
+        }
+      } catch {}
+      return null;
+    }
+
+    function getConnectionSpeed() {
+      const nav = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (nav && nav.downlink !== undefined) {
+        return nav.downlink + " Mbps";
+      }
+      return "unknown";
+    }
+
+    async function report() {
+      const baseUrl = $("controller-url").value.replace(/\/+$/, "");
+      const deviceId = $("device-id").value || "phone-1";
+      const displayName = $("display-name").value || "Phone";
+
+      try {
+        const regRes = await fetch(baseUrl + "/api/v1/workers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            device_id: deviceId,
+            display_name: displayName,
+            capabilities: ["cpu", "npu", "gpu"],
+          }),
+        });
+        if (regRes.ok) {
+          log("Registered: " + deviceId);
+        }
+
+        const cpuPct = await getCPU();
+        const memPct = await getMemory();
+        const battery = await getBattery();
+        const tempEst = 30 + Math.round(cpuPct * 0.4);
+
+        const telRes = await fetch(baseUrl + "/api/v1/telemetry", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            device_id: deviceId,
+            cpu_util: cpuPct,
+            memory_util: memPct || 50,
+            temperature_c: tempEst,
+            network_mbps: parseFloat(getConnectionSpeed()) || 10,
+            active_inferences: 0,
+          }),
+        });
+
+        if (telRes.ok) {
+          setStatus("Connected (" + deviceId + ")", true);
+          log("Telemetry sent: CPU " + cpuPct + "%");
+        }
+
+        $("cpu").textContent = cpuPct + "%";
+        $("cpu-bar").style.width = cpuPct + "%";
+        $("cpu-bar").className = "bar-fill " + barColor(cpuPct);
+
+        if (memPct !== null) {
+          $("memory").textContent = memPct + "%";
+          $("mem-bar").style.width = memPct + "%";
+          $("mem-bar").className = "bar-fill " + barColor(memPct);
+        } else {
+          $("memory").textContent = "—";
+        }
+
+        if (battery.level !== null) {
+          $("battery").textContent = battery.level + "%" + (battery.charging ? " ⚡" : "");
+        } else {
+          $("battery").textContent = "—";
+        }
+
+        $("temp").textContent = tempEst + "°C";
+        $("temp").className = "value " + (tempEst > 70 ? "text-red" : tempEst > 50 ? "text-amber" : "text-green");
+        $("network").textContent = getConnectionSpeed();
+
+        $("telemetry-card").style.display = "";
+        $("log-card").style.display = "";
+
+      } catch (err) {
+        setStatus("Error: " + err.message, false);
+        log("ERROR: " + err.message);
+      }
+    }
+
+    $("btn-start").addEventListener("click", () => {
+      if (running) return;
+      running = true;
+      $("btn-start").style.display = "none";
+      $("btn-stop").style.display = "";
+      report();
+      intervalId = setInterval(report, 5000);
+      log("Started reporting every 5s");
+    });
+
+    $("btn-stop").addEventListener("click", () => {
+      running = false;
+      clearInterval(intervalId);
+      $("btn-start").style.display = "";
+      $("btn-stop").style.display = "none";
+      setStatus("Stopped", false);
+      log("Stopped");
+    });
+
+    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      setTimeout(() => $("btn-start").click(), 500);
+    }
+  </script>
+</body>
+</html>

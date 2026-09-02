@@ -1,0 +1,52 @@
+# Build outputs
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+*.jar
+*.war
+*.ear
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration
+local.properties
+*.keystore
+*.jks
+*.pem
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Android Studio
+captures/
+.externalNativeBuild/
+.cxx/
+*.hprof
+
+# Kotlin
+.kotlin/
+
+# Logs
+*.log
+build_native_log.txt
+build_final_log.txt
+build_clean_log.txt
+crash_log.txt
+
+# Tooling / agent artifacts
+.claude-flow/
+.mimosa/
+
+# Build scripts (local convenience)
+build_*.bat
+build_*.log
+Clean

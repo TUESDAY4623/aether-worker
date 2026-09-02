@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  controller:
+    build: .
+    container_name: aether-controller
+    ports:
+      - "8000:8000/tcp"
+      - "9000:9000/udp"
+    environment:
+      - AETHER_HOST=0.0.0.0
+      - AETHER_PORT=8000
+      - AETHER_DISCOVERY_PORT=9000
+      - AETHER_API_ENABLED=true
+      - AETHER_API_HOST=0.0.0.0
+      - AETHER_API_PORT=8000
+      - AETHER_LOG_LEVEL=INFO
+    volumes:
+      - aether-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  aether-data:
+    driver: local

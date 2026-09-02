@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Aether Worker</string>
+    <string name="controller_url">Controller URL</string>
+    <string name="device_id">Device ID</string>
+    <string name="display_name">Display Name</string>
+    <string name="start_reporting">Start Reporting</string>
+    <string name="stop">Stop</string>
+    <string name="live_telemetry">Live Telemetry</string>
+    <string name="how_to_use">How to use</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_starting">Starting…</string>
+</resources>

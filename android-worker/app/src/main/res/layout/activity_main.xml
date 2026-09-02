@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Aether Worker"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <EditText
+        android:id="@+id/controller_host"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Controller IP"
+        android:text="192.168.1.100"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/start_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/stop_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Stop"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/pairing_code"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pairing: ---"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/log_text"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text=""
+        android:textSize="12sp"
+        android:background="#111"
+        android:textColor="#0f0"
+        android:padding="8dp"
+        android:fontFamily="monospace" />
+
+</LinearLayout>

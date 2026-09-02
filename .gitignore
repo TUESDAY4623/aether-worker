@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.venv/
+venv/
+env/
+
+# Android
+android-worker/.gradle/
+android-worker/build/
+android-worker/.kotlin/
+*.apk
+*.ap_
+*.aab
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Tooling / agent artifacts
+.claude-flow/
+.mimosa/
+
+# Logs
+*.log
+android-worker/build_*.log
+android-worker/build_*.bat
+android-worker/Clean
+android-worker/crash_log.txt
+
+# Secrets (never commit)
+secrets.py
+config.py
+aether/secrets.py
+aether/config.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
