@@ -30,6 +30,24 @@ class DeviceTelemetry:
     tensor_bandwidth_mbps: float = 0.0
     available: bool = True
 
+    def to_dict(self) -> dict:
+        return {
+            "device_id": self.device_id,
+            "timestamp": self.timestamp,
+            "temperature_c": self.temperature_c,
+            "memory_total_mb": self.memory_total_mb,
+            "memory_available_mb": self.memory_available_mb,
+            "memory_aether_reserved_mb": self.memory_aether_reserved_mb,
+            "cpu_utilization_pct": self.cpu_utilization_pct,
+            "npu_utilization_pct": self.npu_utilization_pct,
+            "battery_pct": self.battery_pct,
+            "is_charging": self.is_charging,
+            "power_state": self.power_state,
+            "network_latency_ms": self.network_latency_ms,
+            "tensor_bandwidth_mbps": self.tensor_bandwidth_mbps,
+            "available": self.available,
+        }
+
 
 class TelemetryCollector:
     """Collects and stores telemetry snapshots with rolling history."""

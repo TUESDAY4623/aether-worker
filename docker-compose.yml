@@ -5,21 +5,22 @@ services:
     build: .
     container_name: aether-controller
     ports:
-      - "8000:8000/tcp"
-      - "9000:9000/udp"
+      - "8765:8765/tcp"
+      - "8766:8766/udp"
+      - "8080:8080/tcp"
     environment:
-      - AETHER_HOST=0.0.0.0
-      - AETHER_PORT=8000
-      - AETHER_DISCOVERY_PORT=9000
+      - AETHER_CONTROLLER_HOST=0.0.0.0
+      - AETHER_CONTROLLER_PORT=8765
+      - AETHER_DISCOVERY_PORT=8766
       - AETHER_API_ENABLED=true
       - AETHER_API_HOST=0.0.0.0
-      - AETHER_API_PORT=8000
+      - AETHER_API_PORT=8080
       - AETHER_LOG_LEVEL=INFO
     volumes:
       - aether-data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8080/health')"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -10,7 +10,7 @@ import threading
 import logging
 from typing import Optional
 
-from aether.secrets import load_device_secret, SecretError
+from aether._secrets import load_device_secret, SecretError
 
 logger = logging.getLogger(__name__)
 

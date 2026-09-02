@@ -63,6 +63,9 @@ except Exception:  # pragma: no cover
     Hierarchy = None
     HierarchyRole = None
 
+from aether.telemetry.collector import DeviceTelemetry
+from aether.workers.registry import WorkerDevice
+
 # Lazy singletons
 _model_registry = None
 _accel_manager = None
@@ -169,16 +172,26 @@ if _dashboard_dir.exists():
 
 @app.on_event("startup")
 async def on_startup() -> None:
-    """Initialize shared resources at startup."""
-    app.state.start_time = time.time()
-    app.state.config = None
-    app.state.workers = None
-    app.state.telemetry = None
-    app.state.thermal = None
-    app.state.transfer_mgr = None
-    app.state.key_manager = None
-    app.state.pairing = None
-    app.state._sessions = {}
+    """Initialize shared resources at startup from controller-wired state."""
+    st = app.state
+    if getattr(st, "config", None) is None:
+        st.config = None
+    if getattr(st, "workers", None) is None:
+        st.workers = None
+    if getattr(st, "telemetry", None) is None:
+        st.telemetry = None
+    if getattr(st, "thermal", None) is None:
+        st.thermal = None
+    if getattr(st, "transfer_mgr", None) is None:
+        st.transfer_mgr = None
+    if getattr(st, "key_manager", None) is None:
+        st.key_manager = None
+    if getattr(st, "pairing", None) is None:
+        st.pairing = None
+    if not getattr(st, "_sessions", None):
+        st._sessions = {}
+    if not getattr(st, "start_time", None):
+        st.start_time = time.time()
     logger.info("Aether API started", extra={"docs": "/api/docs"})
 
 
@@ -307,6 +320,55 @@ async def get_telemetry(device_id: Optional[str] = None) -> dict:
             raise HTTPException(status_code=404, detail=f"No telemetry for {device_id}")
         return {"device_id": device_id, "telemetry": data.to_dict()}
     return {"telemetry": {k: v.to_dict() for k, v in telemetry.all_latest().items()}}
+
+
+@app.post("/api/v1/telemetry", tags=["Telemetry"])
+async def post_telemetry(body: dict) -> dict:
+    """Receive telemetry report from a worker device."""
+    telemetry = getattr(app.state, 'telemetry', None)
+    workers = getattr(app.state, 'workers', None)
+    if telemetry is None:
+        return {"status": "error", "detail": "telemetry not initialized"}
+
+    device_id = body.get("device_id", "unknown")
+    tel = DeviceTelemetry(
+        device_id=device_id,
+        temperature_c=float(body.get("temperature_c", 0.0)),
+        memory_total_mb=int(body.get("memory_total_mb", 0)),
+        memory_available_mb=int(body.get("memory_available_mb", 0)),
+        memory_aether_reserved_mb=int(body.get("memory_aether_reserved_mb", 0)),
+        cpu_utilization_pct=float(body.get("cpu_util", body.get("cpu_utilization_pct", 0.0))),
+        npu_utilization_pct=float(body.get("npu_utilization_pct", 0.0)),
+        battery_pct=float(body.get("battery_pct", 0.0)),
+        is_charging=bool(body.get("is_charging", False)),
+        network_latency_ms=float(body.get("network_latency_ms", 0.0)),
+        tensor_bandwidth_mbps=float(body.get("network_mbps", 0.0)),
+        available=bool(body.get("available", True)),
+    )
+    telemetry.report(tel)
+    if workers:
+        for w in workers.all_workers:
+            if w.device_id == device_id:
+                w.last_seen = time.time()
+                break
+    return {"status": "ok", "device_id": device_id}
+
+
+@app.post("/api/v1/workers", tags=["Workers"])
+async def register_worker(body: dict) -> dict:
+    """Register a new worker device."""
+    workers = getattr(app.state, 'workers', None)
+    if workers is None:
+        return {"status": "error", "detail": "worker registry not initialized"}
+    device_id = body.get("device_id", "unknown")
+    display_name = body.get("display_name", device_id)
+    worker = WorkerDevice(
+        device_id=device_id,
+        display_name=display_name,
+        peer_addr=body.get("peer_addr", ""),
+    )
+    workers.register(worker)
+    return {"status": "registered", "device_id": device_id}
 
 
 # ── Thermal endpoints ──────────────────────────────────────────────────────
